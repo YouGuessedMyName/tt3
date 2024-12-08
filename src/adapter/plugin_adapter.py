@@ -5,8 +5,9 @@ import socket
 from generic.adapter_core import AdapterCore
 from generic.broker_connection import BrokerConnection
 from smartdoor.handler import Handler
+from matrix.matrix_handler import MatrixHandler
 
-ADAPTER_NAME = 'Smartdoor'
+ADAPTER_NAME = 'Matrix'
 
 def start_plugin_adapter(adapter_name: str, url: str, token: str, loglevel: int):
     """
@@ -25,7 +26,8 @@ def start_plugin_adapter(adapter_name: str, url: str, token: str, loglevel: int)
     )
 
     broker_connection = BrokerConnection(url, token)
-    handler = Handler()
+    # Change this between Handler and MatrixHandler to switch.
+    handler = MatrixHandler()
 
     adapter_core = AdapterCore(adapter_name, broker_connection, handler)
 
