@@ -20,7 +20,7 @@ def _stimulus(name, channel='matrix', parameters=None):
 
 class MatrixHandler(AbstractHandler):
     """
-    This class handles the interaction between AMP and the SmartDoor SUT.
+    This class handles the interaction between AMP and the Matrix SUT.
     """
 
     def __init__(self):
@@ -50,6 +50,7 @@ class MatrixHandler(AbstractHandler):
         end_point = self.configuration.items[0].value
         self.sut = MatrixConnection(self, end_point)
         self.sut.connect()
+        self.adapter_core.send_ready()
 
     def reset(self):
         """

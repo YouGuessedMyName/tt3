@@ -94,14 +94,14 @@ class AdapterCore:
 
             # Start the SUT
             logging.info('Connecting to the SUT')
-            try:
-                self.handler.set_configuration(Configuration.decode(pb_config))
-                self.handler.start()
+            # try:
+            self.handler.set_configuration(Configuration.decode(pb_config))
+            self.handler.start()
 
-            except Exception as e:
-                logging.error('Error connection to the SUT: {}'.format(e))
-                self.send_error(str(e))
-                return
+            # except Exception as e:
+            #     logging.error('Error connection to the SUT: {}'.format(e))
+            #     self.send_error(str(e))
+            #     return
 
         elif self.state == State.CONNECTED:
             message = 'Configuration received while not yet announced'
@@ -145,20 +145,20 @@ class AdapterCore:
             logging.debug('Reset message received')
             self._clear_qthread_queues()
 
-            try:
-                logging.debug('Resetting the SUT')
-                response = self.handler.reset()
-                if response:
-                    message = 'Resetting the SUT failed due to: {reason}'.format(reason=response)
-                    logging.error(message)
-                    self.send_error(message)
-                    return
-
-            except Exception as e:
-                message = 'Error while resetting connection to the SUT: {reason}'.format(reason=str(e))
+            # try:
+            logging.debug('Resetting the SUT')
+            response = self.handler.reset()
+            if response:
+                message = 'Resetting the SUT failed due to: {reason}'.format(reason=response)
                 logging.error(message)
                 self.send_error(message)
                 return
+
+            # except Exception as e:
+                # message = 'Error while resetting connection to the SUT: {reason}'.format(reason=str(e))
+                # logging.error(message)
+                # self.send_error(message)
+                # return
         else:
             message = 'Reset received while not ready'
             logging.error(message)

@@ -1,41 +1,66 @@
 import logging
-import threading
-import websocket
+import requests
+
+### CONSTANTS SET BY THE USER ###
+SYNAPSE_DOCKER_NAME = "synapse"
+BASE_URL = "http://localhost:8008"
+
+
+
+FULL_URL = BASE_URL + "/_matrix/client/v3/"
 
 class MatrixConnection:
     """
-    This class handles the connection, sending and receiving of messages to the SmartDoor SUT
+    This class handles the connection, sending and receiving of messages to the Matrix SUT
 
     Attributes:
-        handler (adapter.smartdoor.Handler)
-        endpoint (str): URL of the SmartDoor SUT
+        handler (adapter.Matrix.Handler)
+        endpoint (str): URL of the Matrix SUT
     """
 
     def __init__(self, handler, endpoint):
         self.handler = handler
         self.endpoint = endpoint
+        self.one_session = None
+        self.two_session = None
+        self.three_session = None
 
         self.websocket = None
         self.wst = None
+    
+    @staticmethod
+    def login_user(user, password) -> dict:
+        """Log this user in and return their session."""
+        def generate_login_body(user, password) -> dict:
+            body = {
+                    "type": "m.login.password",
+                    "identifier": {
+                        "type": "m.id.user",
+                        "user": user
+                    },
+                    "password": password
+                    }
+            return body
+        
+        response = requests.post(
+            FULL_URL + "login",
+            json = generate_login_body(user, password)
+        )
+        # logging.debug(response)
+        assert response.ok, f"Login failed for user {user}. You might need to restart the container"
+        return response.json()
 
     def connect(self):
         """
-        Connect to the SmartDoor SUT.
+        Connect to the Matrix SUT. In our case this means establishing the user sessions.
         """
-        logging.info('Connecting to SmartDoor')
+        logging.info('Connecting to Matrix and establishing user sessions...')
 
         # Use lambda functions to correctly pass the self variable.
-        self.websocket = websocket.WebSocketApp(
-            self.endpoint,
-            on_open=lambda _: self.on_open(),
-            on_close=lambda _, close_status_code, close_msg: self.on_close(),
-            on_message=lambda _, msg: self.on_message(msg),
-            on_error=lambda _, msg: self.on_error(msg)
-        )
-
-        self.wst = threading.Thread(target=self.websocket.run_forever)
-        self.wst.daemon = True
-        self.wst.start()
+        self.one_session = self.login_user("one", "one")
+        self.two_session = self.login_user("two", "two")
+        self.three_session = self.login_user("three", "three")
+        logging.info('User sessions established sucesfully.')
 
     def send(self, message):
         """
@@ -66,7 +91,7 @@ class MatrixConnection:
         Callback that is called when the SUT sends a message.
 
         Args:
-            msg (str): Message of the SmartDoor SUT
+            msg (str): Message of the Matrix SUT
         """
         logging.debug('Received message from SUT: {msg}'.format(msg=msg))
         self.handler.send_message_to_amp(msg)
