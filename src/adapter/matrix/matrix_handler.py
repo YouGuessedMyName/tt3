@@ -76,7 +76,7 @@ class MatrixHandler(AbstractHandler):
 
         label = Label.decode(pb_label)
         sut_msg = self._label2message(label)
-        print("SUT MESSAGE", sut_msg)
+        #print("SUT MESSAGE", sut_msg)
 
         # send confirmation of stimulus back to AMP
         pb_label.timestamp = time.time_ns()

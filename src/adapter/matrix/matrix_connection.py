@@ -3,9 +3,6 @@ import requests
 import subprocess
 from time import sleep
 
-### CONSTANTS SET BY THE USER ###
-SYNAPSE_DOCKER_NAME = "synapse"
-
 class MatrixConnection:
     """
     This class handles the connection, sending and receiving of messages to the Matrix SUT
@@ -24,6 +21,30 @@ class MatrixConnection:
         self.three_session = None
         self.full_url = endpoint + "/_matrix/client/v3/"
         self.container_name = container_name
+    
+    @staticmethod
+    def get_auth_header(user_session):
+        return {"Authorization": f"Bearer {user_session["access_token"]}"}
+
+    def get_room_ids(self, admin_session) -> list:
+        response = requests.get(
+            self.endpoint + "/_synapse/admin/v1/rooms",
+            headers=self.get_auth_header(admin_session),
+        )
+        assert response.ok
+        return [x["room_id"] for x in response.json()["rooms"]]
+
+    def delete_room(self, room_id: str, admin_session):
+        response = requests.delete(
+            self.endpoint + "/_synapse/admin/v2/rooms/" + room_id,
+            headers=self.get_auth_header(admin_session),
+            json={
+                "purge": True,
+                "force_purge": True,
+                "block": False
+                }
+            )
+        assert response.ok
     
     def login_user(self, user, password) -> dict:
         """Log this user in and return their session."""
@@ -61,7 +82,9 @@ class MatrixConnection:
     def reset(self):
         """Rest the SUT and wait for 5 seconds.
         """
-        logging.info(f"Restarting synapse container and waiting 5 seconds...")
+        admin_session = self.login_user("admin", "admin")
+        logging.info(f"Deleting all rooms, restarting synapse container and waiting 5 seconds...")
+        [self.delete_room(room_id, admin_session) for room_id in self.get_room_ids(admin_session)]
         subprocess.run(["docker", "restart", self.container_name])
         sleep(5)
         logging.info("Done restarting the container.")
