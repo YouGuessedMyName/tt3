@@ -1,13 +1,10 @@
 import logging
 import requests
+import subprocess
+from time import sleep
 
 ### CONSTANTS SET BY THE USER ###
 SYNAPSE_DOCKER_NAME = "synapse"
-BASE_URL = "http://localhost:8008"
-
-
-
-FULL_URL = BASE_URL + "/_matrix/client/v3/"
 
 class MatrixConnection:
     """
@@ -16,20 +13,19 @@ class MatrixConnection:
     Attributes:
         handler (adapter.Matrix.Handler)
         endpoint (str): URL of the Matrix SUT
+        container_Name (str): Name of the matrix container that is running on the same local machine.
+            Needed in order to restart the SUT.
     """
 
-    def __init__(self, handler, endpoint):
-        self.handler = handler
+    def __init__(self, endpoint, container_name):
         self.endpoint = endpoint
         self.one_session = None
         self.two_session = None
         self.three_session = None
-
-        self.websocket = None
-        self.wst = None
+        self.full_url = endpoint + "/_matrix/client/v3/"
+        self.container_name = container_name
     
-    @staticmethod
-    def login_user(user, password) -> dict:
+    def login_user(self, user, password) -> dict:
         """Log this user in and return their session."""
         def generate_login_body(user, password) -> dict:
             body = {
@@ -43,7 +39,7 @@ class MatrixConnection:
             return body
         
         response = requests.post(
-            FULL_URL + "login",
+            self.full_url + "login",
             json = generate_login_body(user, password)
         )
         # logging.debug(response)
@@ -55,23 +51,31 @@ class MatrixConnection:
         Connect to the Matrix SUT. In our case this means establishing the user sessions.
         """
         logging.info('Connecting to Matrix and establishing user sessions...')
-
+        self.reset()
         # Use lambda functions to correctly pass the self variable.
         self.one_session = self.login_user("one", "one")
         self.two_session = self.login_user("two", "two")
         self.three_session = self.login_user("three", "three")
         logging.info('User sessions established sucesfully.')
-
-    def send(self, message):
+    
+    def reset(self):
+        """Rest the SUT and wait for 5 seconds.
         """
-        Send a message to the SUT.
+        logging.info(f"Restarting synapse container and waiting 5 seconds...")
+        subprocess.run(["docker", "restart", self.container_name])
+        sleep(5)
+        logging.info("Done restarting the container.")
+
+    def send(self, message) -> str:
+        """
+        Send a message to the SUT, and return the response as a raw string message.
 
         Args:
             message (str): Message to send
         """
         logging.debug('Sending message to SUT: {msg}'.format(msg=message))
-
-        self.websocket.send(message)
+        logging.error('Sending messages to the SUT is not yet implemented.')
+        return "TEST_RESP"
 
     def on_open(self):
         """
@@ -80,39 +84,10 @@ class MatrixConnection:
         logging.info('Connected to SUT')
         self.send('RESET')
 
-    def on_close(self):
-        """
-        Callback that is called when the socket is closed.
-        """
-        logging.debug('Closed connection to SUT')
-
-    def on_message(self, msg):
-        """
-        Callback that is called when the SUT sends a message.
-
-        Args:
-            msg (str): Message of the Matrix SUT
-        """
-        logging.debug('Received message from SUT: {msg}'.format(msg=msg))
-        self.handler.send_message_to_amp(msg)
-
-    def on_error(self, msg):
-        """
-        Callback that is called when something is wrong with the websocket connection
-
-        Args:
-            msg (str): Error message
-        """
-        logging.error("Error with connection to SUT: {e}".format(e=msg))
-
     def stop(self):
         """
         Perform any cleanup if the SUT is closed.
         """
-        if self.websocket:
-            self.websocket.close()
-            logging.debug('Stopping thread which handles WebSocket connection with SUT')
-            self.websocket.keep_running = False
-            self.wst.join()
-            logging.debug('Thread stopped')
-            self.wst = None
+        self.one_session = None
+        self.two_session = None
+        self.three_session = None

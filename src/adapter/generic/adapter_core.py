@@ -126,14 +126,14 @@ class AdapterCore:
                 logging.error(message)
                 self.send_error(message)
 
-            try:
-                # Perform the stimulus action (which could trigger a response).
-                logging.debug("Call handler.stimulate for '{name}'".format(name=pb_label.label))
-                self.handler.stimulate(pb_label)
+            # try:
+            # Perform the stimulus action (which could trigger a response).
+            logging.debug("Call handler.stimulate for '{name}'".format(name=pb_label.label))
+            self.handler.stimulate(pb_label)
 
-            except Exception as e:
-                logging.error('Exception: {ex}'.format(ex=e))
-                self.send_error('error while stimulating the SUT: {ex}'.format(ex=e))
+            # except Exception as e:
+            #     logging.error('Exception: {ex}'.format(ex=e))
+            #     self.send_error('error while stimulating the SUT: {ex}'.format(ex=e))
         else:
             message = 'Label received from AMP while not ready'
             logging.error(message)

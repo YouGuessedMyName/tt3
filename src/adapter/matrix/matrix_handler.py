@@ -27,7 +27,7 @@ class MatrixHandler(AbstractHandler):
         super().__init__()
         self.sut = None
 
-    def send_message_to_amp(self, raw_message: str):
+    def send_message_to_amp(self, raw_message: Label):
         """
         Send a message back to AMP. The message from the SUT needs to be converted to a Label.
 
@@ -35,29 +35,26 @@ class MatrixHandler(AbstractHandler):
             raw_message (str): The message to send to AMP.
         """
         logging.debug('response received: {label}'.format(label=raw_message))
-
-        if raw_message == 'RESET_PERFORMED':
-            # After 'RESET_PERFORMED', the SUT is ready for a new test case.
-            self.adapter_core.send_ready()
-        else:
-            label = self._message2label(raw_message)
-            self.adapter_core.send_response(label)
+        label = self._message2label(raw_message)
+        self.adapter_core.send_response(label)
 
     def start(self):
         """
         Start a test.
         """
         end_point = self.configuration.items[0].value
-        self.sut = MatrixConnection(self, end_point)
+        container_name = self.configuration.items[1].value
+        self.sut = MatrixConnection(end_point, container_name)
         self.sut.connect()
         self.adapter_core.send_ready()
 
     def reset(self):
         """
-        Prepare the SUT for the next test case.
+        Prepare the SUT for the next test case and notify the SUT when reset is completed.
         """
         logging.info('Resetting the SUT for a new test case')
-        self.sut.send('RESET')
+        self.sut.reset()
+        self.adapter_core.send_ready()
 
     def stop(self):
         """
@@ -71,7 +68,7 @@ class MatrixHandler(AbstractHandler):
 
     def stimulate(self, pb_label: label_pb2.Label):
         """
-        Processes a stimulus of a given label at the SUT.
+        Processes a stimulus of a given label at the SUT, and send the response to AMP.
 
         Args:
             pb_label (label_pb2.Label): stimulus that the Axini Modeling Platform has sent
@@ -79,6 +76,7 @@ class MatrixHandler(AbstractHandler):
 
         label = Label.decode(pb_label)
         sut_msg = self._label2message(label)
+        print("SUT MESSAGE", sut_msg)
 
         # send confirmation of stimulus back to AMP
         pb_label.timestamp = time.time_ns()
@@ -87,7 +85,8 @@ class MatrixHandler(AbstractHandler):
 
         # leading spaces are needed to justify the stimuli and responses
         logging.info('      Injecting stimulus @SUT: ?{name}'.format(name=label.name))
-        self.sut.send(sut_msg)
+        raw_message = self.sut.send(sut_msg)
+        self.send_message_to_amp(raw_message)
 
     def supported_labels(self):
         """
@@ -121,11 +120,17 @@ class MatrixHandler(AbstractHandler):
         Returns:
             Configuration: the default configuration required by this adapter.
         """
-        return Configuration([ConfigurationItem(\
-            name='endpoint',
-            tipe=Type.STRING,
-            description='Base websocket URL of the Synapse server',
-            value='ws://localhost:8008'),
+        return Configuration([
+            ConfigurationItem(
+                name='endpoint',
+                tipe=Type.STRING,
+                description='Base websocket URL of the Synapse server',
+                value='http://localhost:8008'),
+            ConfigurationItem(
+                name='docker_container',
+                tipe=Type.STRING,
+                description='name of the docker container that should be reset when appropriate.',
+                value="synapse")
         ])
 
     def _label2message(self, label: Label):
@@ -163,7 +168,7 @@ class MatrixHandler(AbstractHandler):
         label = Label(
             sort=Sort.RESPONSE,
             name=label_name,
-            channel='synapse_channel',
+            channel='matrix',
             physical_label=bytes(message, 'UTF-8'),
             timestamp=datetime.now())
 
