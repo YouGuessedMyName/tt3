@@ -96,21 +96,16 @@ class MatrixHandler(AbstractHandler):
              [Label]: List of all supported labels of this adapter
         """
         return [
-            _stimulus('test_stim'),
-            _response('test_resp'),
-            # _stimulus('open'),
-            # _response('opened'),
-            # _stimulus('close'),
-            # _response('closed'),
-            # _stimulus('lock', parameters=[Parameter('passcode', Type.INTEGER)]),
-            # _response('locked'),
-            # _stimulus('unlock', parameters=[Parameter('passcode', Type.INTEGER)]),
-            # _response('unlocked'),
-            # _stimulus('reset'),
-            # _response('invalid_command'),
-            # _response('invalid_passcode'),
-            # _response('incorrect_passcode'),
-            # _response('shut_off'),
+            _stimulus('create_room'),
+            _stimulus('join_room', parameters=[Parameter('room', Type.STRING)]),
+            _stimulus('leave_room', parameters=[Parameter('room', Type.STRING)]),
+            _stimulus('send_message', parameters=[Parameter('message', Type.STRING), Parameter('room', Type.STRING)]),
+            _stimulus('invite_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
+            _stimulus('ban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
+            _stimulus('unban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
+
+            _response('succes'),
+            _response('fail', parameters=[Parameter('error_code', Type.INTEGER)])
         ]
 
     def default_configuration(self) -> Configuration:
