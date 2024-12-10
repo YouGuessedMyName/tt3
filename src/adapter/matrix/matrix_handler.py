@@ -9,6 +9,7 @@ from generic.api.label import Label, Sort
 from generic.api.parameter import Type, Parameter
 from generic.handler import Handler as AbstractHandler
 from matrix.matrix_connection import MatrixConnection
+from time import sleep
 
 def _response(name, channel='matrix', parameters=None):
     """ Helper method to create a response Label. """
@@ -73,6 +74,8 @@ class MatrixHandler(AbstractHandler):
         Args:
             pb_label (label_pb2.Label): stimulus that the Axini Modeling Platform has sent
         """
+        # Sleep a little bit to prevent too many requests error.
+        #sleep(0.2)
 
         label = Label.decode(pb_label)
         sut_msg, params = self._label2message(label)

@@ -149,6 +149,10 @@ class MatrixConnection:
         # TODO make it return the actual status code.
         if status_code == 200:
             return "SUCCESS", {}
+        elif status_code == 429: # Rate limited, try again recursively
+            logging.warning("Rate limited, try again after one second.")
+            sleep(1)
+            return self.send(label, params)
         else:
             return "FAIL", {}
     
@@ -202,7 +206,7 @@ class MatrixConnection:
     def ban_user(self, room_id: str, user_session: str, target_user_session: str):
         response = requests.post(
             self.full_url + "rooms/" + room_id + "/ban",
-            headers=user_session,
+            headers=self.get_auth_header(user_session=user_session),
             json = {"user_id": target_user_session["user_id"],
                     "reason": "Should be banned."}
         )
@@ -211,7 +215,7 @@ class MatrixConnection:
     def unban_user(self, room_id: str, user_session: str, target_user_session: str):
         response = requests.post(
             self.full_url + "rooms/" + room_id + "/unban",
-            headers=user_session,
+            headers=self.get_auth_header(user_session),
             json = {"user_id": target_user_session["user_id"]}
         )
         return response.status_code

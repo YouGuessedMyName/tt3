@@ -20,6 +20,8 @@ def start_plugin_adapter(adapter_name: str, url: str, token: str, loglevel: int)
         loglevel (int): Loglevel constant
     """
     logging.basicConfig(
+        filemode='a',
+        filename="output.txt",
         level=loglevel,
         format='%(asctime)s-[%(levelname)8s] %(name)s::%(module)s|%(lineno)s:: %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
