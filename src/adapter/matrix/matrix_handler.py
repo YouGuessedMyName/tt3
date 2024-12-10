@@ -27,15 +27,15 @@ class MatrixHandler(AbstractHandler):
         super().__init__()
         self.sut = None
 
-    def send_message_to_amp(self, raw_message: Label):
+    def send_message_to_amp(self, label: str, parameters: dict):
         """
         Send a message back to AMP. The message from the SUT needs to be converted to a Label.
 
         Args:
             raw_message (str): The message to send to AMP.
         """
-        logging.debug('response received: {label}'.format(label=raw_message))
-        label = self._message2label(raw_message)
+        logging.info(f'response received: {label} {parameters}')
+        label = self._message2label(label, parameters)
         self.adapter_core.send_response(label)
 
     def start(self):
@@ -75,7 +75,7 @@ class MatrixHandler(AbstractHandler):
         """
 
         label = Label.decode(pb_label)
-        sut_msg = self._label2message(label)
+        sut_msg, params = self._label2message(label)
         #print("SUT MESSAGE", sut_msg)
 
         # send confirmation of stimulus back to AMP
@@ -85,8 +85,8 @@ class MatrixHandler(AbstractHandler):
 
         # leading spaces are needed to justify the stimuli and responses
         logging.info('      Injecting stimulus @SUT: ?{name}'.format(name=label.name))
-        raw_message = self.sut.send(sut_msg)
-        self.send_message_to_amp(raw_message)
+        raw_message, parameters = self.sut.send(sut_msg, params)
+        self.send_message_to_amp(raw_message, parameters)
 
     def supported_labels(self):
         """
@@ -96,16 +96,16 @@ class MatrixHandler(AbstractHandler):
              [Label]: List of all supported labels of this adapter
         """
         return [
-            _stimulus('create_room'),
-            _stimulus('join_room', parameters=[Parameter('room', Type.STRING)]),
-            _stimulus('leave_room', parameters=[Parameter('room', Type.STRING)]),
-            _stimulus('send_message', parameters=[Parameter('message', Type.STRING), Parameter('room', Type.STRING)]),
-            _stimulus('invite_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
-            _stimulus('ban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
-            _stimulus('unban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
+            _stimulus('create_room', parameters=[Parameter('username', Type.STRING)]),
+            _stimulus('join_room', parameters=[Parameter('room', Type.STRING), Parameter('username', Type.STRING)]),
+            _stimulus('leave_room', parameters=[Parameter('room', Type.STRING), Parameter('username', Type.STRING)]),
+            _stimulus('send_message', parameters=[Parameter('message', Type.STRING), Parameter('room', Type.STRING), Parameter('username', Type.STRING)]),
+            _stimulus('invite_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING), Parameter('username', Type.STRING)]),
+            _stimulus('ban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING), Parameter('username', Type.STRING)]),
+            _stimulus('unban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING), Parameter('username', Type.STRING)]),
 
             _response('succes'),
-            _response('room_created_succes', parameters=[Parameter('room', Type.STRING)]),
+            _response('room_created_success', parameters=[Parameter('room', Type.STRING)]),
             _response('fail', parameters=[Parameter('error_code', Type.INTEGER)])
         ]
 
@@ -136,21 +136,14 @@ class MatrixHandler(AbstractHandler):
         Args:
             label (Label)
         Returns:
-            str: The message to be sent to the SUT.
+            str, dict: The message to be sent to the SUT and the parameters.
         """
+        if label.name == "unban_user":
+            values = [p.value for p in label.parameters]
+            logging.warning(f"No. params: {len(label.parameters)}, values: {values}")
+        return label.name.upper(), {p.name: p.value for p in label.parameters}
 
-        # sut_msg = None
-        # command_name = label.name.upper()
-        # if label.name in ['lock', 'unlock']:
-        #     sut_msg = '{msg}:{passcode}'.format(msg=command_name, passcode=label.parameters[0].value)
-        # else:
-        #     sut_msg = '{msg}'.format(msg=command_name)
-
-        # return sut_msg
-        command_name = label.name.upper()
-        return '{msg}'.format(msg=command_name)
-
-    def _message2label(self, message: str):
+    def _message2label(self, message: str, parameters: dict):
         """
         Converts a SUT message to a Protobuf Label.
 
@@ -159,13 +152,14 @@ class MatrixHandler(AbstractHandler):
         Returns:
             Label: The converted message as a Label.
         """
-
         label_name = message.lower()
+        parameters = [Parameter(k, Type.STRING, v) for k, v in parameters.items()]
         label = Label(
             sort=Sort.RESPONSE,
             name=label_name,
             channel='matrix',
             physical_label=bytes(message, 'UTF-8'),
-            timestamp=datetime.now())
+            timestamp=datetime.now(),
+            parameters=parameters)
 
         return label

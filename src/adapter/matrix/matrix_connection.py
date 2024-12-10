@@ -1,7 +1,10 @@
 import logging
+from typing import Tuple
 import requests
 import subprocess
 from time import sleep
+import random
+import string
 
 class MatrixConnection:
     """
@@ -19,6 +22,7 @@ class MatrixConnection:
         self.one_session = None
         self.two_session = None
         self.three_session = None
+        self.session_dict = None
         self.full_url = endpoint + "/_matrix/client/v3/"
         self.container_name = container_name
     
@@ -44,8 +48,8 @@ class MatrixConnection:
                 "block": False
                 }
             )
-        assert response.ok
-        print("deleted", room_id)
+        #assert response.ok
+        print("Tried to delete", room_id)
     
     def login_user(self, user, password) -> dict:
         """Log this user in and return their session."""
@@ -78,6 +82,11 @@ class MatrixConnection:
         self.one_session = self.login_user("one", "one")
         self.two_session = self.login_user("two", "two")
         self.three_session = self.login_user("three", "three")
+        self.session_dict = {
+            "one": self.one_session,
+            "two": self.two_session,
+            "three": self.three_session
+        }
         logging.info('User sessions established sucesfully.')
     
     def reset(self):
@@ -90,17 +99,122 @@ class MatrixConnection:
         sleep(5)
         logging.info("Done restarting the container.")
 
-    def send(self, message) -> str:
+    def send(self, label: str, params: dict) -> Tuple[str, dict]:
         """
         Send a message to the SUT, and return the response as a raw string message.
 
         Args:
             message (str): Message to send
         """
-        logging.debug('Sending message to SUT: {msg}'.format(msg=message))
-        logging.error('Sending messages to the SUT is not yet implemented.')
+        logging.info(f'Sending message to SUT: {label}: {params}')
+        status_code = None
+        try:
+            user_session = self.session_dict[params["username"]]
+        except KeyError:
+            logging.warning(f"User with the name {params["username"]} does not exist")
+            return "FAIL", {}
+        if label == "CREATE_ROOM":
+            status_code, room_id = self.create_room(user_session)
+            if status_code == 200:
+                return "ROOM_CREATED_SUCCESS", {"room_id": room_id}
+            else:
+                return "FAIL", {}
+        else:
+            room_id = params["room_id"]
+            if label == "JOIN_ROOM":
+                status_code = self.join_room(room_id=room_id, user_session=user_session)
+            elif label == "LEAVE_ROOM":
+                status_code = self.leave_room(room_id=room_id, user_session=user_session)
+            elif label == "SEND_MESSAGE":
+                message = params["message"]
+                status_code = self.send_message(room_id=room_id, user_session=user_session, message=message)
+            if label == "BAN_USER" or label == "UNBAN_USER":
+                try:
+                    target_user = params["user_id"]
+                    target_user_session = self.session_dict[target_user]
+                except KeyError as e:
+                    logging.error(f"Targeted user with name {params["user_id"]} does not exist! Terminating the adapter.")
+                    return "FAIL", {}
+                if label == "BAN_USER":
+                    status_code = self.ban_user(room_id=room_id, user_session=user_session, target_user_session=target_user_session)
+                elif label == "UNBAN_USER":
+                    status_code = self.unban_user(room_id=room_id, user_session=user_session, target_user_session=target_user_session)
+                    logging.info(f"UNBAN INFO: User {params["username"]} to ban {params["user_id"]}!\tSTATUS CODE: {status_code}")
+            elif label == "INVITE_USER":
+                # TODO remove invites.
+                return "SUCCESS", {}
         
-        return "TEST_RESP"
+        #logging.error(f"Unkown label: {label}")
+        logging.info(f"Response status code: {status_code}")
+        # TODO make it return the actual status code.
+        if status_code == 200:
+            return "SUCCESS", {}
+        else:
+            return "FAIL", {}
+    
+    def create_room(self, user_session: str):
+        def random_room_name():
+            return ''.join(random.choices(string.ascii_uppercase + string.digits, k=50))
+        
+        def create_room_json():
+            name_and_alias = random_room_name()
+            return {
+                    "name":name_and_alias,
+                    "visibility":"public",
+                    "preset":"public_chat",
+                    "room_alias_name":name_and_alias,
+                    "topic":"TOPIC",
+                    "initial_state":[]
+                }
+        response = requests.post(
+            self.full_url + "createRoom",
+            headers=self.get_auth_header(user_session=user_session),
+            json= create_room_json()
+        )
+        room_id = response.json()["room_id"]
+        return response.status_code, room_id
+        
+    def join_room(self, room_id: str, user_session: str):
+        response = requests.post(
+            self.full_url + "join/" + room_id,
+            headers=self.get_auth_header(user_session=user_session),
+        )
+        return response.status_code
+
+    def leave_room(self, room_id: str, user_session: str):
+        response = requests.post(
+            self.full_url + "join/" + room_id,
+            headers=self.get_auth_header(user_session=user_session),
+        )
+        return response.status_code
+
+    def send_message(self, room_id: str, user_session: str, message: str):
+        response = requests.put(
+            self.full_url + "rooms/" + room_id + "/send/m.room.message/" + str(random.randint),
+            headers=self.get_auth_header(user_session=user_session),
+            json= {
+                "msgtype": "m.text",
+                "body": message
+            }
+        )
+        return response.status_code
+
+    def ban_user(self, room_id: str, user_session: str, target_user_session: str):
+        response = requests.post(
+            self.full_url + "rooms/" + room_id + "/ban",
+            headers=user_session,
+            json = {"user_id": target_user_session["user_id"],
+                    "reason": "Should be banned."}
+        )
+        return response.status_code
+
+    def unban_user(self, room_id: str, user_session: str, target_user_session: str):
+        response = requests.post(
+            self.full_url + "rooms/" + room_id + "/unban",
+            headers=user_session,
+            json = {"user_id": target_user_session["user_id"]}
+        )
+        return response.status_code
 
     def on_open(self):
         """
