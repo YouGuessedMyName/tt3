@@ -45,6 +45,7 @@ class MatrixConnection:
                 }
             )
         assert response.ok
+        print("deleted", room_id)
     
     def login_user(self, user, password) -> dict:
         """Log this user in and return their session."""
@@ -98,6 +99,7 @@ class MatrixConnection:
         """
         logging.debug('Sending message to SUT: {msg}'.format(msg=message))
         logging.error('Sending messages to the SUT is not yet implemented.')
+        
         return "TEST_RESP"
 
     def on_open(self):

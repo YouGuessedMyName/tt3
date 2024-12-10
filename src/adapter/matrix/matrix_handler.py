@@ -105,6 +105,7 @@ class MatrixHandler(AbstractHandler):
             _stimulus('unban_user', parameters=[Parameter('user_id', Type.STRING), Parameter('room', Type.STRING)]),
 
             _response('succes'),
+            _response('room_created_succes', parameters=[Parameter('room', Type.STRING)]),
             _response('fail', parameters=[Parameter('error_code', Type.INTEGER)])
         ]
 
