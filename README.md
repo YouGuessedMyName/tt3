@@ -13,4 +13,4 @@ Once you connect to the adapter in AMP, you can configure two variables:
 * `endpoint`: set this to the ip address of your Matrix server.
 * `docker_container`: set this to the name of your docker container. This is used for restarting the server.
 
-Then, upload the `model.aml` to AMP and set it as your project root model file. You should now be able to run the model.
+Then, upload the `model.aml` to AMP and set it as your project root model file. You should now be able to run tests on Synapse using AMP.
