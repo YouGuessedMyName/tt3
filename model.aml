@@ -21,8 +21,7 @@ process('main') {
   # Fixed room: we can only create one room
   var 'room1', :string
 
-  # Fixed booleans for each user, stating whether the user is banned from the room
-  var 'one_banned', :boolean, false
+  # Fixed booleans for each user, stating whether the user is banned from the room ("one" is creator of room and cannot be banned)
   var 'two_banned', :boolean, false
   var 'three_banned', :boolean, false
 
@@ -45,114 +44,114 @@ process('main') {
     repeat {
       # join_room with valid conditions for each of the users
       o {receive 'join_room',
-            constraint: 'username == "one" && one_banned == false && one_in_room == false && room_id == room1',
+            constraint: 'username == "one" && ! one_in_room && room_id == room1',
             update: 'one_in_room = true'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       o {receive 'join_room',
-            constraint: 'username == "two" && two_banned == false && two_in_room == false && room_id == room1',
+            constraint: 'username == "two" && ! two_banned && ! two_in_room && room_id == room1',
             update: 'two_in_room = true'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       o {receive 'join_room',
-            constraint: 'username == "three" && three_banned == false && three_in_room == false && room_id == room1',
+            constraint: 'username == "three" && ! three_banned && ! three_in_room && room_id == room1',
             update: 'three_in_room = true'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # join_room, but at least one of the conditions is not met
       o {receive 'join_room',
-            constraint: '! (username == "one" && one_banned == false && one_in_room == false && room_id == room1) &&
-                         ! (username == "two" && two_banned == false && two_in_room == false && room_id == room1) &&
-                         ! (username == "three" && three_banned == false && three_in_room == false && room_id == room1) &&
+            constraint: '! (username == "one" && ! one_in_room && room_id == room1) &&
+                         ! (username == "two" && ! two_banned && ! two_in_room && room_id == room1) &&
+                         ! (username == "three" && ! three_banned && ! three_in_room && room_id == room1) &&
                          username != :void && room_id != :void'
-        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # leave_room with valid conditions for each of the users
       o {receive 'leave_room',
-            constraint: 'username == "one" && one_in_room == true && room_id == room1',
+            constraint: 'username == "one" && one_in_room && room_id == room1',
             update: 'one_in_room = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       o {receive 'leave_room',
-            constraint: 'username == "two" && two_in_room == true && room_id == room1',
+            constraint: 'username == "two" && two_in_room && room_id == room1',
             update: 'two_in_room = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       o {receive 'leave_room',
-            constraint: 'username == "three" && three_in_room == true && room_id == room1',
+            constraint: 'username == "three" && three_in_room && room_id == room1',
             update: 'three_in_room = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # leave_room, but at least one of the conditions is not met
       o {receive 'leave_room',
-            constraint: '! (username == "one" && one_in_room == true && room_id == room1) &&
-                         ! (username == "two" && two_in_room == true && room_id == room1) &&
-                         ! (username == "three" && three_in_room == true && room_id == room1) &&
+            constraint: '! (username == "one" && one_in_room && room_id == room1) &&
+                         ! (username == "two" && two_in_room && room_id == room1) &&
+                         ! (username == "three" && three_in_room && room_id == room1) &&
                          username != :void && room_id != :void'
-        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # send_message with valid conditions for each of the users
       o {receive 'send_message',
-            constraint: 'username == "one" && one_banned == false && one_in_room == true && message != :void && room_id == room1'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+            constraint: 'username == "one" && one_in_room && message != :void && room_id == room1'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       o {receive 'send_message',
-            constraint: 'username == "two" && two_banned == false && two_in_room == true && message != :void && room_id == room1'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+            constraint: 'username == "two" && ! two_banned && two_in_room && message != :void && room_id == room1'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       o {receive 'send_message',
-            constraint: 'username == "three" && three_banned == false && three_in_room == true && message != :void && room_id == room1'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+            constraint: 'username == "three" && ! three_banned && three_in_room && message != :void && room_id == room1'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # send_message, but at least one of the conditions is not met
       o {receive 'send_message',
-            constraint: '! (username == "one" && one_banned == false && one_in_room == true && message != :void && room_id == room1) &&
-                         ! (username == "two" && two_banned == false && two_in_room == true && message != :void && room_id == room1) &&
-                         ! (username == "three" && three_banned == false && three_in_room == true && message != :void && room_id == room1) &&
+            constraint: '! (username == "one" && one_in_room && message != :void && room_id == room1) &&
+                         ! (username == "two" && ! two_banned && two_in_room && message != :void && room_id == room1) &&
+                         ! (username == "three" && ! three_banned && three_in_room && message != :void && room_id == room1) &&
                          username != :void && message != :void && room_id != :void'
-        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
 
       ## ban_user, all possible options that are valid
       # one bans two
       o {receive 'ban_user',
-            constraint: 'username == "one" && user_id == "two" && one_banned == false && two_banned == false && one_in_room == true && two_in_room == true && room_id == room1',
+            constraint: 'username == "one" && user_id == "two" && ! two_banned && one_in_room && two_in_room && room_id == room1',
             update: 'two_banned = true; two_in_room = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # one bans three
       o {receive 'ban_user',
-            constraint: 'username == "one" && user_id == "three" && one_banned == false && three_banned == false && one_in_room == true && three_in_room == true && room_id == room1',
+            constraint: 'username == "one" && user_id == "three" && ! three_banned && one_in_room && three_in_room  && room_id == room1',
             update: 'three_banned = true; three_in_room = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       ## ban_user, but at least one of the conditions is not met.
       o {receive 'ban_user',
-            constraint: '! (username == "one" && user_id == "two" && one_banned == false && two_banned == false && one_in_room == true && two_in_room == true && room_id == room1) &&
-                         ! (username == "one" && user_id == "three" && one_banned == false && three_banned == false && one_in_room == true && three_in_room == true && room_id == room1) &&
+            constraint: '! (username == "one" && user_id == "two" && ! two_banned && one_in_room && two_in_room && room_id == room1) &&
+                         ! (username == "one" && user_id == "three" && ! three_banned && one_in_room && three_in_room && room_id == room1) &&
                            username != :void && user_id != :void && room_id != :void'
-        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
 
       ## unban_user, all possible options that are valid
       # one unbans two
       o {receive 'unban_user',
-            constraint: 'username == "one" && user_id == "two" && ! one_banned && two_banned && one_in_room && room_id == room1',
+            constraint: 'username == "one" && user_id == "two" && two_banned && one_in_room && room_id == room1',
             update: 'two_banned = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # one unbans three
       o {receive 'unban_user',
-            constraint: 'username == "one" && user_id == "three" && ! one_banned && three_banned && one_in_room && room_id == room1',
+            constraint: 'username == "one" && user_id == "three" && three_banned && one_in_room && room_id == room1',
             update: 'three_banned = false'
-        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'success', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
       # unban_user, but at least one of the conditions is not met
       o {receive 'unban_user',
-            constraint: '! (username == "one" && user_id == "two" && ! one_banned && two_banned && one_in_room && room_id == room1) &&
-                         ! (username == "one" && user_id == "three" && ! one_banned && three_banned && one_in_room && room_id == room1) &&
+            constraint: '! (username == "one" && user_id == "two" && two_banned && one_in_room && room_id == room1) &&
+                         ! (username == "one" && user_id == "three" && three_banned && one_in_room && room_id == room1) &&
                          username != :void && user_id != :void && room_id != :void'
-        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 1b: $one_banned, 2b: $two_banned, 3b: $three_banned'
+        send 'fail', note: '1i: $one_in_room 2i: $two_in_room, 3i: $three_in_room, 2b: $two_banned, 3b: $three_banned'
       }
     }
 
